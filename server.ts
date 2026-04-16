@@ -99,14 +99,21 @@ ${isPhoneoSport ? "5. Pour Phonéo-Sport, ajoute un champ 'phonemes' qui est un 
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Server will be attached to either Vite middleware (dev) 
+  // or act directly as a serverless API endpoint in Vercel.
+
+  if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+      console.log(`Development Server running on http://localhost:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
 // Support Vercel serverless export
-export default startServer;
-
-if (process.env.NODE_ENV !== 'production') {
-    startServer();
-}
+const appPromise = startServer();
+export default async function (req: any, res: any) {
+  const app = await appPromise;
+  app(req, res);
+};
