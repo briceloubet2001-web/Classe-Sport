@@ -1,9 +1,5 @@
-import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { Question, Competency, Theme, Subject, SkillLevel } from "../types";
 import { PHYSICAL_EXERCISES, PHONEO_SPORT_EXERCISES } from "../constants";
-
-// Use process.env.GEMINI_API_KEY as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || process.env.GEMINI_API_KEY || '' });
 
 export const generateQuizQuestions = async (
   subject: Subject,
@@ -92,86 +88,30 @@ export const generateQuizQuestions = async (
     - Les réponses doivent être concises pour une lecture rapide sur tableau interactif.`;
   }
 
-  // To support both local testing (where we inject keys) and Vercel functions
   let rawQuestions;
   
-  if (process.env.NODE_ENV === 'production') {
-    // APPEL AU BACKEND (SERVERLESS FUNCTION SUR VERCEL) AU LIEU DU SDK DIRECT
-    const apiResponse = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        subject,
-        theme,
-        competenciesLabel,
-        level,
-        count,
-        subjectRules,
-        lengthRules,
-        isPhoneoSport
-      })
-    });
+  // APPEL AU BACKEND SERVERLESS (NODE.JS / VERCEL)
+  const apiResponse = await fetch('/api/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      subject,
+      theme,
+      competenciesLabel,
+      level,
+      count,
+      subjectRules,
+      lengthRules,
+      isPhoneoSport
+    })
+  });
 
-    if (!apiResponse.ok) {
-      throw new Error('Failed to fetch from backend API');
-    }
-    rawQuestions = await apiResponse.json();
-  } else {
-    // Local execution directly to Gemini
-    const promptContents = `Génère ${count} questions de quiz pédagogique.
-    Matière : ${subject.label}
-    Domaine : ${theme.label}
-    Niveau : ${level}
-    Compétences précises à évaluer : ${competenciesLabel}
-    
-    RÈGLES SPÉCIFIQUES À LA MATIÈRE :
-    ${subjectRules}
-    
-    RÈGLES DE LONGUEUR ET DE NIVEAU :
-    ${lengthRules}
-    
-    FORMAT DE SORTIE :
-    1. Réponse sous forme de texte court ou nombre.
-    2. Trois options par question (pour les modes classiques).
-    3. Une seule réponse correcte. Les deux autres sont des pièges classiques.
-    4. L'index de la bonne réponse est 0, 1 ou 2.
-    ${isPhoneoSport ? "5. Pour Phonéo-Sport, ajoute un champ 'phonemes' qui est un tableau des sons du mot." : ""}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: promptContents,
-      config: {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              statement: { type: Type.STRING },
-              options: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                minItems: 3,
-                maxItems: 3
-              },
-              correctIndex: { type: Type.INTEGER },
-              phonemes: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              }
-            },
-            required: ["statement", "options", "correctIndex"]
-          }
-        }
-      }
-    });
-
-    rawQuestions = JSON.parse(response.text || "[]");
+  if (!apiResponse.ok) {
+    throw new Error('Failed to fetch from backend API');
   }
-
+  rawQuestions = await apiResponse.json();
 
   let lastUsedIds: string[] = [];
 

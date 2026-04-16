@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
       isPhoneoSport
     } = req.body;
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || '' });
 
     const promptContents = `Génère ${count} questions de quiz pédagogique.
 Matière : ${subject.label}
